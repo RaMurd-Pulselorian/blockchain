@@ -21,12 +21,35 @@ app.use(express.urlencoded({ extended: false }));
 
 app.get('/blockchain', function (req, res) {
     res.send(bitcoin);
-})
+});
 
 app.post('/transaction', function (req, res) {
-    const blockIndex = bitcoin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
-    res.json({ note: `Transaction will be added in block ${blockIndex}.` });
-})
+    const newTransaction = req.body;
+    const blockIndex = bitcoin.addTransactionToPendingTransactions(newTransaction);
+
+    res.json({ note: `Transaction will be added in block ${blockIndex}.`})
+});
+
+app.post('/transaction/broadcast', function (req, res) {
+    const newTransaction = bitcoin.createNewTransaction(req.body.amount, req.body.sender, req.body.recipient);
+    bitcoin.addTransactionToPendingTransactions(newTransaction);
+
+    const requestPromises = [];
+    bitcoin.networkNodes.forEach(netNode => {
+        const requestOptions = {
+            uri: netNode + '/transaction',
+            method: 'POST',
+            body: newTransaction,
+            json: true
+        }
+
+        requestPromises.push(rp(requestOptions));
+    });
+
+    Promise.all(requestPromises).then(data => {
+        res.json({ note: 'Transaction created and broadcast successfully.'})
+    })
+});
 
 app.get('/mine', function (req, res) {
     const lastBlock = bitcoin.getLastBlock();
@@ -43,7 +66,9 @@ app.get('/mine', function (req, res) {
         note: "New block mined successfully",
         block: newBlock
     })
-})
+});
+
+
 
 // register a node and broadcast it to the network
 app.post('/register-and-broadcast-node', function (req, res) {
@@ -84,7 +109,7 @@ app.post('/register-and-broadcast-node', function (req, res) {
     }).then(data => {
         res.json({ note: 'New node registered with network successfully.' });
     })
-})
+});
 
 // register a node with the network
 app.post('/register-node', function (req, res) {
@@ -94,7 +119,7 @@ app.post('/register-node', function (req, res) {
         bitcoin.networkNodes.push(newNodeUrl);
     }
     res.json({ note: 'New node registered successfully.' });
-})
+});
 
 // register multiple nodes at once
 app.post('/register-nodes-bulk', function (req, res) {
@@ -108,7 +133,9 @@ app.post('/register-nodes-bulk', function (req, res) {
     })
 
     res.json({ note: 'All nodes bulk-registered successfully.' });
-})
+});
+
+
 
 app.listen(port, function () {
     console.log('Listening at port ' + port + ' ...')
