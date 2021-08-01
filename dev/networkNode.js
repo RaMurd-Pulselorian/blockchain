@@ -1,6 +1,6 @@
 var express = require('express');
 var app = express();
-// var bodyParser = require('body-parser');
+const bodyParser = require('body-parser');
 const Blockchain = require('./blockchain');
 const {
     v1: uuidv1,
@@ -27,7 +27,7 @@ app.post('/transaction', function (req, res) {
     const newTransaction = req.body;
     const blockIndex = bitcoin.addTransactionToPendingTransactions(newTransaction);
 
-    res.json({ note: `Transaction will be added in block ${blockIndex}.` })
+    res.json({ note: `Transaction will be added in block ${blockIndex}.` });
 });
 
 app.post('/transaction/broadcast', function (req, res) {
@@ -82,7 +82,7 @@ app.get('/mine', function (req, res) {
             body: {
                 amount: 12.5,
                 sender: "00",
-                recepient: nodeAddress
+                recipient: nodeAddress
             },
             json: true
         };
@@ -107,12 +107,12 @@ app.post('/receive-new-block', function (req, res) {
         bitcoin.chain.push(newBlock);
         bitcoin.pendingTransactions = [];
         res.json({
-            note: "New block received and accepted",
+            note: 'New block received and accepted.',
             newBlock: newBlock
         });
     } else {
         res.json({
-            note: "New block rejected",
+            note: 'New block rejected.',
             newBlock: newBlock
         });
     }
@@ -218,7 +218,7 @@ app.get('/consensus', function (req, res) {
             bitcoin.chain = newLongestBlockchain;
             bitcoin.pendingTransactions = newPendingTransactions;
 
-            res.json({ 
+            res.json({
                 note: 'This chain has been replaced.',
                 chain: bitcoin.chain
             })
@@ -226,16 +226,36 @@ app.get('/consensus', function (req, res) {
     });
 });
 
-app.get('/block/:blockHash', function(req, res) {
+app.get('/block/:blockHash', function (req, res) {
+    const blockHash = req.params.blockHash;
+    const correctBlock = bitcoin.getBlock(blockHash);
 
+    res.json({
+        block: correctBlock
+    });
 });
 
-app.get('/transaction/:transactionId', function(req, res) {
+app.get('/transaction/:transactionId', function (req, res) {
+    const transactionId = req.params.transactionId;
+    const transactionData = bitcoin.getTransaction(transactionId);
 
+    res.json({
+        block: transactionData.block,
+        transaction: transactionData.transaction
+    });
 });
 
-app.get('/address/:address', function(req, res) {
+app.get('/address/:address', function (req, res) {
+    const address = req.params.address;
+    const addressData = bitcoin.getAddressData(address);
 
+    res.json({
+        addressData: addressData
+    });
+});
+
+app.get('/block-explorer', function (req, res) {
+    res.sendFile('./block-explorer/index.html', { root: __dirname });
 });
 
 app.listen(port, function () {
